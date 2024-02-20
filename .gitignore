@@ -367,6 +367,7 @@ FodyWeavers.xsd
 
 # Project Folders
 annotations/
+dataset/
 images/
 papers/
 presentation/
