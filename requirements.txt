@@ -1,0 +1,8 @@
+tqdm
+requests
+tensorflow==2.10
+matplotlib
+opencv-python
+scikit-learn
+ipython
+visualkeras
