@@ -8,6 +8,8 @@ import numpy as np
 import cv2
 import matplotlib.pyplot as plt
 
+from dataset.dataset_config import IMG_SIZE
+
 model_name = "modelV2_PReLU_vlr_cos_aug_FOCAL_o5_1o1_03"
 model_name2 = "model0_BCE_01"
 model_name3 = "model0_BCE_02"
@@ -64,8 +66,8 @@ def display_segresults(input_img_path, target_img_path, inferred):
     x = cv2.resize(cv2.imread(input_img_path,cv2.IMREAD_COLOR), img_size)[:,:,::-1]
     y = np.expand_dims(cv2.resize(cv2.imread(target_img_path, cv2.IMREAD_GRAYSCALE), img_size), -1) > 128
 
-    inferred = np.reshape(inferred, (320, 640))>0.5
-    y = np.reshape(y, (320, 640))
+    inferred = np.reshape(inferred, IMG_SIZE[::-1])>0.5
+    y = np.reshape(y, IMG_SIZE[::-1])
     
     x_overlay = np.array(x, dtype=np.uint16)
     for i in range(3):

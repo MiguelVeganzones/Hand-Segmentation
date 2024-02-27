@@ -25,7 +25,6 @@ tf.function(jit_compile = True)
 
 BATCH_SIZE = 2
 IMG_SIZE = img_size
-SEED1 = 1337 #random.randint(0,10000) # to shuffle videos
 SEED2 = 3879 #random.randint(0,10000) # to shuffle training dataset
 Train = True
 CHECKPOINT_EPOCH_FREC = 5

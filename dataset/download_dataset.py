@@ -2,12 +2,8 @@ import os
 import zipfile 
 import math
 import logging
-import subprocess
 
-CURRENT_DIR_PATH = os.path.dirname(os.path.realpath(__file__))
-EGOHANDS_DATASET_URL = 'http://vision.soic.indiana.edu/egohands_files/egohands_data.zip'
-EGOHANDS_DIR = rf'{CURRENT_DIR_PATH}/egohands'
-EGOHANDS_DATA_DIR = rf'{EGOHANDS_DIR}/_LABELLED_SAMPLES'
+from directories import CURRENT_DIR_PATH, EGOHANDS_DIR, EGOHANDS_DATA_DIR, EGOHANDS_DATASET_URL
 
 def download_file(url, dest=None):
     """Download file from an URL."""
@@ -33,8 +29,7 @@ def download_file(url, dest=None):
             f.write(data)
     assert wrote == total_size
     
-    
-if __name__ == "__main__":
+def download_and_extract_dataset():    
     logging.info("Checking directories.")
     if not os.path.exists(EGOHANDS_DIR):
         os.mkdir(EGOHANDS_DIR)
@@ -52,5 +47,5 @@ if __name__ == "__main__":
             zf.extractall(EGOHANDS_DIR)
             logging.info("Successfully extracted egohands dataset form zip file.")
     
-    if "_GROUND_TRUTH_DISJUNCT_HANDS" not in os.listdir(EGOHANDS_DIR):
-        subprocess.run([r"C:\Program Files\MATLAB\R2023b\bin\matlab", "-r", rf"run('{EGOHANDS_DIR}\DEMO_1') ; exit"])
+if __name__ == "__main__":
+    download_and_extract_dataset()

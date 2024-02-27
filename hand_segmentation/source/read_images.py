@@ -3,15 +3,15 @@ import cv2
 from matplotlib import pyplot as plt
 import random
 
-INPUT_IMG_DIR = "../../../annotations/egohands/egohands_data/_LABELLED_SAMPLES/"
-TARGET_IMG_DIR = "../../../annotations/egohands/egohands_data/_GROUND_TRUTH_DISJUNCT_HANDS_2/"
-WEIGHT_MAPS_DIR = "../../../annotations/egohands/egohands_data/_WEIGHT_MAPS_08_03_22/"
+INPUT_IMG_DIR = "../../dataset/egohands/_LABELLED_SAMPLES/"
+TARGET_IMG_DIR = "../../dataset/annotations/_GROUND_TRUTH_DISJUNCT_HANDS/"
+WEIGHT_MAPS_DIR = "../../dataset/annotations/_WEIGHT_MAPS/"
 
-AUG_INPUT_IMG_DIR =   "../../../annotations/egohands/egohands_data/_AUGMENTED_SAMPLES/_LABELLED_SAMPLES/"
-AUG_TARGET_IMG_DIR =  "../../../annotations/egohands/egohands_data/_AUGMENTED_SAMPLES/_GROUND_TRUTH_DISJUNCT_HANDS_2/"
-AUG_WEIGHT_MAPS_DIR = "../../../annotations/egohands/egohands_data/_AUGMENTED_SAMPLES/_WEIGHT_MAPS_08_03_22/"
+AUG_INPUT_IMG_DIR =   "../../dataset/egohands/_AUGMENTED_SAMPLES/_LABELLED_SAMPLES/"
+AUG_TARGET_IMG_DIR =  "../../dataset/annotations/_AUGMENTED_SAMPLES/_GROUND_TRUTH_DISJUNCT_HANDS/"
+AUG_WEIGHT_MAPS_DIR = "../../dataset/annotations/_AUGMENTED_SAMPLES/_WEIGHT_MAPS/"
 
-img_size = (640, 320) #[1280//2, 640//2]
+img_size = (1280//2, 640//2) # ()
 
 def get_augmented_data():
     aug_input_img_paths = sorted(

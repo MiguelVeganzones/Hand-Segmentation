@@ -285,56 +285,6 @@ def get_weight_map(segmentation: np.array, w0: float=12., sigma: float=5) -> np.
         w += w0 * np.exp(-((d1+d2)**2)/(2*sigma**2))
     return w 
 
-def compute_and_store_weight_maps():
-    target_weight_map_dir = "../../../annotations/egohands/egohands_data/_WEIGHT_MAPS_08_03_22/"
-    input_mask_dir = "../../../annotations/egohands/egohands_data/_GROUND_TRUTH_DISJUNCT_HANDS_2/"
-
-    #get input mask path
-    input_mask_folders = sorted(
-        [
-            os.path.join(input_mask_dir, fname)
-            for fname in os.listdir(input_mask_dir)
-        ]
-    )
-    target_weight_map_folders = sorted(
-        [
-            os.path.join(target_weight_map_dir, fname)
-            for fname in os.listdir(input_mask_dir)
-        ]
-    )
-    input_mask_paths = sorted(
-        [
-            [os.path.join(folder, fname)
-            for fname in os.listdir(folder)
-            if fname.endswith(".jpg")]
-            for folder in input_mask_folders
-            ]
-    )
-    target_weight_map_paths = sorted(
-        [
-            [os.path.join(out_folder, fname)
-            for fname in os.listdir(in_folder)
-            if fname.endswith(".jpg")]
-            for out_folder, in_folder in zip(target_weight_map_folders, input_mask_folders)
-            ]
-    )
-
-    input_mask_paths = [item for sublist in input_mask_paths for item in sublist]
-    target_weight_map_paths = [item.replace(".jpg", ".npy") for sublist in target_weight_map_paths for item in sublist]
-
-    assert(len(input_mask_paths) == len(target_weight_map_paths))
-
-    os.mkdir(target_weight_map_dir)
-    for mask_dir in target_weight_map_folders:
-        os.mkdir(mask_dir)
-
-    i = 0
-    for path_in, path_out in zip(input_mask_paths, target_weight_map_paths):
-        y = np.expand_dims(cv2.resize(cv2.imread(path_in, cv2.IMREAD_GRAYSCALE), img_size) > 128, -1).astype(np.uint8) #//255 #binarize array
-        np.save(path_out, get_weight_map(y))
-
-
-
 def weighted_pixelwise_binary_crossentropy(y_true: np.array, y_pred: np.array, pixel_weights: np.array)->np.array:
     y_pred = np.clip(np.array(y_pred,dtype=float), 1e-7, 1 - 1e-7)
     term_0 = (1-y_true) * np.log(1-y_pred)
