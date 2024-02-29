@@ -3,8 +3,6 @@ import numpy as np
 from tensorflow.keras.utils import Sequence
 from tensorflow.keras.preprocessing.image import load_img
 import cv2
-from read_images import img_size
-from tools_ import get_weight_map, get_weight_map_approx
 
 class egohands(Sequence):
     """
@@ -19,7 +17,6 @@ class egohands(Sequence):
         self.input_img_paths = input_img_paths
         self.target_img_paths = target_img_paths
         self.weight_map_paths = weight_map_paths
-
 
     def __len__(self):
         """
@@ -40,7 +37,9 @@ class egohands(Sequence):
        
         x = np.zeros((self.batch_size,) + self.img_size[::-1] + (3,), dtype = 'uint8')
         for j, path in enumerate(batch_input_img_paths):
-            x[j] = cv2.resize(cv2.imread(path,cv2.IMREAD_COLOR), self.img_size)
+            im = cv2.imread(path,cv2.IMREAD_COLOR)
+            assert(np.shape(im)[0:2][::-1] == self.img_size)
+            x[j] = im
 
         y = np.zeros((self.batch_size,) + self.img_size[::-1] + (1,), dtype = 'uint8')
         #y = np.zeros((self.batch_size,) + self.img_size[::-1] + (1,), dtype = 'uint8')

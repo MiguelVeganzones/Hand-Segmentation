@@ -15,17 +15,19 @@ from IPython.display import Image, display
 
 from egohands_class import egohands
 from segmentation_model import get_model, NUM_CLASSES, get_model_with_skip_connections_and_residuals, get_model_with_skip_connections_UNET1, get_model_with_skip_connections_UNET0, get_PReLU_model
-from read_images import get_augmented_data, get_dataset_paths, img_size
 from tools_ import get_IOU, get_pixel_precision, display_results, get_precission, get_recall, get_custom_metric
-from dataset.dataset import get_full_dataset_paths
+import sys
+sys.path.append(r'./dataset/')
+from dataset import get_full_dataset_paths
+from directories import INPUT_IMG_DIR, GROUND_TRUTH_DIR, WEIGHT_MAPS_DIR, AUG_INPUT_IMG_DIR, AUG_GROUND_TRUTH_DIR, AUG_WEIGHT_MAPS_DIR
+from dataset_config import ORIGINAL_IMG_SIZE as img_size
 
 gpus = tf.config.experimental.list_physical_devices('GPU') 
 tf.config.experimental.set_memory_growth(gpus[0], True)
 tf.function(jit_compile = True) 
 
 
-BATCH_SIZE = 8
-IMG_SIZE = img_size
+BATCH_SIZE = 2
 SEED2 = 3879 #random.randint(0,10000) # to shuffle training dataset
 Train = True
 CHECKPOINT_EPOCH_FREC = 5
@@ -42,15 +44,16 @@ EPOCHS = 30
 
 if __name__ == "__main__":
 
-    dataset_paths = get_full_dataset_paths()
+    dataset_paths = get_full_dataset_paths(INPUT_IMG_DIR, GROUND_TRUTH_DIR, WEIGHT_MAPS_DIR,
+                                           AUG_INPUT_IMG_DIR, AUG_GROUND_TRUTH_DIR, AUG_WEIGHT_MAPS_DIR)
 
     ############### Train paths ######################
 
-    train_x_paths = [p for dataset in ['train_dataset', 'augmented_dataset'] for p in dataset_paths[dataset]['input']]
-    train_y_paths = [p for dataset in ['train_dataset', 'augmented_dataset'] for p in dataset_paths[dataset]['ground_truth']]
-    train_wm_paths = [p for dataset in ['train_dataset', 'augmented_dataset'] for p in dataset_paths[dataset]['weight_maps']]
+    train_x_paths = [p for dataset in ['train_dataset', 'augmented_dataset'] for video_path in dataset_paths[dataset]['input'] for p in video_path]
+    train_y_paths = [p for dataset in ['train_dataset', 'augmented_dataset'] for video_path in dataset_paths[dataset]['ground_truth'] for p in video_path]
+    train_wm_paths = [p for dataset in ['train_dataset', 'augmented_dataset'] for video_path in dataset_paths[dataset]['weight_maps'] for p in video_path]
 
-    for i in range(len(train_x_paths)//100):
+    for i in range(len(train_x_paths) // 100):
         print(train_x_paths[i*100])
     print("################################################")
 
@@ -59,13 +62,13 @@ if __name__ == "__main__":
     random.Random(SEED2).shuffle(train_wm_paths)
     ##################
 
-    val_x_paths = [p for  p in dataset_paths['validation_dataset']['input']]
-    val_y_paths = [p for  p in dataset_paths['validation_dataset']['ground_truth']]
-    val_wm_paths = [p for  p in dataset_paths['validation_dataset']['weight_maps']]
+    val_x_paths = [p for video_path in dataset_paths['validation_dataset']['input'] for p in video_path]
+    val_y_paths = [p for video_path in dataset_paths['validation_dataset']['ground_truth'] for p in video_path]
+    val_wm_paths = [p for video_path in dataset_paths['validation_dataset']['weight_maps'] for p in video_path]
 
-    test_x_paths = [p for  p in dataset_paths['test_dataset']['input']]
-    test_y_paths = [p for  p in dataset_paths['test_dataset']['ground_truth']]
-    test_wm_paths = [p for  p in dataset_paths['test_dataset']['weight_maps']]
+    test_x_paths = [p for video_path in dataset_paths['test_dataset']['input'] for p in video_path]
+    test_y_paths = [p for video_path in dataset_paths['test_dataset']['ground_truth'] for p in video_path]
+    test_wm_paths = [p for video_path in dataset_paths['test_dataset']['weight_maps'] for p in video_path]
     
     for i in range(len(test_x_paths) // 100):
         print(test_x_paths[100*i])
@@ -84,28 +87,28 @@ if __name__ == "__main__":
         assert(path not in val_x_paths)
 
     print(f'Training samples: {len(train_x_paths)}')
-    print(f'Validation sampels: {len(val_x_paths)}')
+    print(f'Validation samples: {len(val_x_paths)}')
     print(f'Test samples: {len(test_x_paths)}')
     print(f"Epoch size: {int(len(train_x_paths)/BATCH_SIZE)}")
-    
-    a
 
     assert(len(train_x_paths) == len(train_y_paths) == len(train_wm_paths))
     assert(len(val_x_paths) == len(val_y_paths) == len(val_wm_paths))
     assert(len(test_x_paths) == len(test_y_paths) == len(test_wm_paths))
     
     if Train:
-        train_gen = egohands(BATCH_SIZE, IMG_SIZE, train_x_paths, train_y_paths, train_wm_paths)
-        val_gen = egohands(BATCH_SIZE, IMG_SIZE, val_x_paths, val_y_paths, val_wm_paths)
+        train_gen = egohands(BATCH_SIZE, img_size, train_x_paths, train_y_paths, train_wm_paths)
+        val_gen = egohands(BATCH_SIZE, img_size, val_x_paths, val_y_paths, val_wm_paths)
 
-        os.mkdir("./gen/" + model_name)
-        os.mkdir("./gen/" + model_name + "/checkpoints")
+        path = rf"./gen/{model_name}"
+        if not os.path.exists(path):
+            os.makedirs(path)
+            os.mkdir(rf"./gen/{model_name}/checkpoints")
         
         #for i in range(25):
         #    train_gen.show(i**2)
             #val_gen.show(2*i)
 
-        model = get_PReLU_model(IMG_SIZE[::-1], NUM_CLASSES)
+        model = get_PReLU_model(img_size[::-1], NUM_CLASSES)
          
         callbacks = [
                 keras.callbacks.ModelCheckpoint(
