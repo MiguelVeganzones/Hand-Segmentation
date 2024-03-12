@@ -5,18 +5,20 @@ from tensorflow.keras.layers import Dropout
 import visualkeras
 import matplotlib.pyplot as plt
 from collections import defaultdict
+import sys
+sys.path.append(r'./dataset/')
+from dataset_config import IMG_SIZE as img_size
 
-from read_images import img_size
 from tools_ import weighted_pixelwise_binary_crossentropy_tf, weighted_dice_loss_tf, weighted_pixelwise_focal_loss_tf
 
-IMG_SIZE = img_size
 NUM_CLASSES = 1
 model_name = "model_10_03_22"
 
 initial_learning_rate = 0.0017
 final_learning_rate = 0.0006
-learning_rate_decay_factor = (final_learning_rate / initial_learning_rate)**(1/30)
-steps_per_epoch = int(2411)
+epochs = 30
+steps_per_epoch = 951
+learning_rate_decay_factor = (final_learning_rate / initial_learning_rate)**(1/epochs)
 
 ### Based on https://keras.io/examples/vision/oxford_pets_image_segmentation/
 
@@ -148,7 +150,7 @@ def get_PReLU_model(img_size, num_classes):
     """
 
     initializer = 'he_normal'
-    _dropout = 0.3
+    _dropout = 0.2
     inputs = tf.keras.Input(shape = img_size + (3,))
 
     ### [First half of the network: downsampling inputs] ###
@@ -160,18 +162,21 @@ def get_PReLU_model(img_size, num_classes):
     x = layers.Conv2D(32, 3, kernel_initializer = initializer, strides = 2, padding="same")(inputs)
     x = layers.BatchNormalization()(x)
     x = layers.PReLU(shared_axes=[1,2])(x)
+    # x = layers.ReLU()(x)
 
     previous_block_activation = x #set aside residual
 
     # Blocks 1, 2, 3 are identical appart from the feature depth
     for filters in [64, 128, 256]:
-        x = layers.Conv2D(filters, 3, kernel_initializer = initializer, padding="same")(x)
+        x = layers.SeparableConv2D(filters, 3, kernel_initializer = initializer, padding="same")(x)
         x = layers.BatchNormalization()(x)
         x = layers.PReLU(shared_axes=[1,2])(x)
+        # x = layers.ReLU()(x)
 
-        x = layers.Conv2D(filters, 3, kernel_initializer = initializer, padding="same")(x)
+        x = layers.SeparableConv2D(filters, 3, kernel_initializer = initializer, padding="same")(x)
         x = layers.BatchNormalization()(x)
         x = layers.PReLU(shared_axes=[1,2])(x)
+        # x = layers.ReLU()(x)
 
         x = layers.MaxPooling2D(3, strides=2, padding="same")(x) #probar max pooling(2, tal)
         x = layers.Dropout(_dropout)(x) #dropout after the pooling layers
@@ -196,10 +201,12 @@ def get_PReLU_model(img_size, num_classes):
         x = layers.Conv2DTranspose(filters, 3, kernel_initializer = initializer, padding="same")(x)
         x = layers.BatchNormalization()(x)
         x = layers.PReLU(shared_axes=[1,2])(x)
+        # x = layers.ReLU()(x)
 
         x = layers.Conv2DTranspose(filters, 3, kernel_initializer = initializer, padding="same")(x)
         x = layers.BatchNormalization()(x)
         x = layers.PReLU(shared_axes=[1,2])(x)
+        # x = layers.ReLU()(x)
 
         x = layers.Dropout(_dropout)(x)
         x = layers.UpSampling2D(2)(x)
@@ -221,7 +228,7 @@ def get_PReLU_model(img_size, num_classes):
 
     lr_schedule = tf.keras.optimizers.schedules.CosineDecay(
                         initial_learning_rate = 0.002,
-                        decay_steps = 30 * 2411,
+                        decay_steps = 35 * 639,
                         alpha = 0.2
                        )
 
@@ -257,6 +264,127 @@ def get_PReLU_model(img_size, num_classes):
         ###momentum : Exponential average of the gradients
 
     return model
+
+
+def get_PReLU_model2(img_size, num_classes):
+    """
+    img_size follows numpy's format (y,x)
+    """
+
+    initializer =  'he_normal' # 'random_normal' 
+    _dropout = 0.2
+    inputs = tf.keras.Input(shape = img_size + (3,))
+
+    ### [First half of the network: downsampling inputs] ###
+
+    #x = layers.Conv2D(32, 3, strides=2, padding="same")(inputs)
+    #x = layers.BatchNormalization()(x)
+    #x = layers.Activation("relu")(x)
+
+    x = layers.Conv2D(32, 3, kernel_initializer = initializer, strides = 2, padding="same")(inputs)
+    x = layers.BatchNormalization()(x)
+    x = layers.PReLU(shared_axes=[1,2])(x)
+    # x = layers.ReLU()(x)
+
+    previous_block_activation = x #set aside residual
+
+    # Blocks 1, 2, 3 are identical apart from the feature depth
+    for filters in [64, 128, 256]:
+        x = layers.SeparableConv2D(filters, 3, kernel_initializer = initializer, padding="same")(x)
+        x = layers.BatchNormalization()(x)
+        x = layers.PReLU(shared_axes=[1,2])(x)
+
+        x = layers.SeparableConv2D(filters, 3, kernel_initializer = initializer, padding="same")(x)
+        x = layers.BatchNormalization()(x)
+
+        residual = layers.Conv2D(filters, 1, padding="same")(previous_block_activation)
+        x = layers.add([x, residual]) #add back residual
+
+        x = layers.PReLU(shared_axes=[1,2])(x)
+
+        x = layers.MaxPooling2D(3, strides=2, padding="same")(x) #probar max pooling(2, tal)
+        x = layers.Dropout(_dropout)(x) #dropout after the pooling layers
+
+        #project residual (?)
+        previous_block_activation = x #set aside next residual
+    ###-----------------------------------
+    #### [Middle]
+    #x = layers.Conv2D(256, (3, 3), activation = "relu", padding="same")(x)
+    #x = layers.BatchNormalization()(x)
+   
+    #x = layers.Conv2D(256, (3, 3), activation = "relu", padding="same")(x)
+    #x = layers.BatchNormalization()(x)
+
+    ###-----------------------------------
+    ### [Second half of the network: upsampling inputs] ###
+    for filters in [256, 128, 64, 32]:
+
+        x = layers.Conv2DTranspose(filters, 3, kernel_initializer = initializer, padding="same")(x)
+        x = layers.BatchNormalization()(x)
+        x = layers.PReLU(shared_axes=[1,2])(x)
+
+        x = layers.Conv2DTranspose(filters, 3, kernel_initializer = initializer, padding="same")(x)
+        x = layers.BatchNormalization()(x)
+
+        residual = layers.Conv2D(filters, 1, padding="same")(previous_block_activation)
+        x = layers.add([x, residual]) #Add back residual
+
+        x = layers.PReLU(shared_axes=[1,2])(x)
+
+        x = layers.Dropout(_dropout)(x)
+        x = layers.UpSampling2D(2)(x)
+
+        # Project residual
+        previous_block_activation = x #Set aside next residual
+
+    # Add per-pixel classification layer
+
+    #outputs = layers.Conv2D(num_classes, 3, activation="softmax", padding="same")(x)
+    outputs = layers.Conv2D(num_classes, 3, activation = "sigmoid", padding="same")(x)
+
+    #Define model
+    model = custom_model(inputs, outputs)
+
+
+    lr_schedule = tf.keras.optimizers.schedules.CosineDecay(
+                        initial_learning_rate = initial_learning_rate,
+                        decay_steps = epochs * steps_per_epoch,
+                        alpha = 0.2
+                       )
+
+#    tf.keras.optimizers.Adam(
+#    learning_rate=0.001,
+#    beta_1=0.9,
+#    beta_2=0.999,
+#    epsilon=1e-07,
+#    amsgrad=False,
+#    name="Adam",
+#    **kwargs
+#)
+
+
+    #optimizer = keras.optimizers.Adam()
+    optimizer = tf.keras.optimizers.Adam(learning_rate=lr_schedule)
+    model.compile(optimizer, 
+                  loss = 'binary_crossentropy',
+                  metrics = [
+                             tf.keras.metrics.BinaryIoU(target_class_ids=[1], threshold=0.5)
+                            ]
+        )
+        #optimizer = keras.optimizers.Adam()
+            #model.compile(
+            #optimizer=tf.keras.optimizers.SGD(lr=0.01, momentum=0.9, clipnorm=1.0),
+            #loss="sparse_categorical_crossentropy")
+        #model.compile(optimizer="rmsprop", loss="sparse_categorical_crossentropy")
+        #loss = tf.nn.sigmoid_cross_entropy_with_logits
+        #model.compile(
+        #        optimizer=tf.keras.optimizers.SGD(lr=0.01, momentum=0.9, clipnorm=1.0),
+        #        loss=tf.keras.losses.BinaryCrossentropy(from_logits=False)
+        #    )
+        ###momentum : Exponential average of the gradients
+
+    return model
+
 
 def get_PReLU_model_old(img_size, num_classes):
     """
@@ -745,7 +873,7 @@ if __name__ == "__main__":
     tf.keras.backend.clear_session()
 
     # Build model
-    model = get_PReLU_model(IMG_SIZE, NUM_CLASSES)
+    model = get_PReLU_model2(img_size, NUM_CLASSES)
     model.summary()
     tf.keras.utils.plot_model(model, show_shapes=True, to_file="./gen/" + model_name + ".png")
 

@@ -45,12 +45,12 @@ class egohands(Sequence):
         #y = np.zeros((self.batch_size,) + self.img_size[::-1] + (1,), dtype = 'uint8')
         for j, path in enumerate(batch_target_img_paths):
             y[j] = np.expand_dims(
-                cv2.resize(cv2.imread(path, cv2.IMREAD_GRAYSCALE), self.img_size) > 128, -1) #//255 #binarize array
+                cv2.imread(path, cv2.IMREAD_GRAYSCALE) > 128, -1) #//255 #binarize array
 
         #load weight maps
         w = np.zeros((self.batch_size,) + self.img_size[::-1] + (1,), dtype = 'float32') #weight maps
         for j, path in enumerate(batch_weight_map_paths):
-            w[j] = np.reshape(np.load(path), self.img_size[::-1]+(1,))
+            w[j] = np.expand_dims(np.load(path), axis=-1)
 
         return x, y, w
 
@@ -58,7 +58,7 @@ class egohands(Sequence):
 
         fig = plt.figure()
         for a in range(rows*cols):
-            x, y, w = self.__getitem__(idx + a);
+            x, y, w = self.__getitem__(idx + a)
             #x_train
             fig.add_subplot(rows, cols*3, 3*a+1)
             plt.imshow(x[0][:,:,::-1])

@@ -9,30 +9,35 @@ import cv2
 from sklearn.utils import class_weight
 import os
 import time
+import tensorflow_model_optimization as tfmot 
+import tempfile
 
 from IPython.display import Image, display
 #from tensorflow.keras.preprocessing.image import load_img
 
 from egohands_class import egohands
-from segmentation_model import get_model, NUM_CLASSES, get_model_with_skip_connections_and_residuals, get_model_with_skip_connections_UNET1, get_model_with_skip_connections_UNET0, get_PReLU_model
+from segmentation_model import get_model, NUM_CLASSES, get_model_with_skip_connections_and_residuals, get_model_with_skip_connections_UNET1, get_model_with_skip_connections_UNET0, get_PReLU_model, get_PReLU_model2
 from tools_ import get_IOU, get_pixel_precision, display_results, get_precission, get_recall, get_custom_metric
 import sys
 sys.path.append(r'./dataset/')
 from dataset import get_full_dataset_paths
 from directories import INPUT_IMG_DIR, GROUND_TRUTH_DIR, WEIGHT_MAPS_DIR, AUG_INPUT_IMG_DIR, AUG_GROUND_TRUTH_DIR, AUG_WEIGHT_MAPS_DIR
-from dataset_config import ORIGINAL_IMG_SIZE as img_size
+from directories import INPUT_IMG_DIR_640_360, GROUND_TRUTH_DIR_640_360, WEIGHT_MAPS_DIR_640_360, AUG_INPUT_IMG_DIR_640_360, AUG_GROUND_TRUTH_DIR_640_360, AUG_WEIGHT_MAPS_DIR_640_360
+from dataset_config import IMG_SIZE as img_size
 
 gpus = tf.config.experimental.list_physical_devices('GPU') 
 tf.config.experimental.set_memory_growth(gpus[0], True)
 tf.function(jit_compile = True) 
 
 
-BATCH_SIZE = 2
+BATCH_SIZE = 8
 SEED2 = 3879 #random.randint(0,10000) # to shuffle training dataset
 Train = True
+Sparsify = False
 CHECKPOINT_EPOCH_FREC = 5
 
-model_name = "modelV3_PReLU_vlr_cos_aug_FOCAL_o5_1o1_03"
+#model_name = "modelV3_PReLU_vlr_cos_aug_FOCAL_o5_1o1_02_640_360"
+model_name = "separable_PReLU_640_368"
 
 EPOCHS = 30
 
@@ -44,8 +49,7 @@ EPOCHS = 30
 
 if __name__ == "__main__":
 
-    dataset_paths = get_full_dataset_paths(INPUT_IMG_DIR, GROUND_TRUTH_DIR, WEIGHT_MAPS_DIR,
-                                           AUG_INPUT_IMG_DIR, AUG_GROUND_TRUTH_DIR, AUG_WEIGHT_MAPS_DIR)
+    dataset_paths = get_full_dataset_paths(INPUT_IMG_DIR_640_360, GROUND_TRUTH_DIR_640_360, WEIGHT_MAPS_DIR_640_360, AUG_INPUT_IMG_DIR_640_360, AUG_GROUND_TRUTH_DIR_640_360, AUG_WEIGHT_MAPS_DIR_640_360)
 
     ############### Train paths ######################
 
@@ -95,9 +99,9 @@ if __name__ == "__main__":
     assert(len(val_x_paths) == len(val_y_paths) == len(val_wm_paths))
     assert(len(test_x_paths) == len(test_y_paths) == len(test_wm_paths))
     
+    train_gen = egohands(BATCH_SIZE, img_size, train_x_paths, train_y_paths, train_wm_paths)
+    val_gen = egohands(BATCH_SIZE, img_size, val_x_paths, val_y_paths, val_wm_paths)
     if Train:
-        train_gen = egohands(BATCH_SIZE, img_size, train_x_paths, train_y_paths, train_wm_paths)
-        val_gen = egohands(BATCH_SIZE, img_size, val_x_paths, val_y_paths, val_wm_paths)
 
         path = rf"./gen/{model_name}"
         if not os.path.exists(path):
@@ -108,19 +112,19 @@ if __name__ == "__main__":
         #    train_gen.show(i**2)
             #val_gen.show(2*i)
 
-        model = get_PReLU_model(img_size[::-1], NUM_CLASSES)
-         
+        model = get_PReLU_model2(img_size[::-1], NUM_CLASSES)
+        
         callbacks = [
                 keras.callbacks.ModelCheckpoint(
                     #"./gen/" + model_name + "model_check_point.h5",
                     filepath = "./gen/" + model_name + '/checkpoints/{epoch:02d}.hdf5',
                     verbose=1, 
                     save_weights_only=False,
-                    save_best_only = False,
+                    save_best_only = False, # TODO Try True
                     save_freq = int( len(train_x_paths) / BATCH_SIZE * CHECKPOINT_EPOCH_FREC )
                     #save_best_only=True)
                     #keras.callbacks.EarlyStopping(monitor = "val_accuracy", patience = 10, mode = 'max', verbose=1
-                )
+                ),
         ]
 
         config = tf.compat.v1.ConfigProto()
@@ -138,7 +142,7 @@ if __name__ == "__main__":
 
         t1 = time.time()
 
-        model.save("./gen/" + model_name)
+        tf.keras.models.save_model(model, f"./gen/{model_name}", include_optimizer=False)
         tf.keras.utils.plot_model(model, show_shapes=True, to_file=f"./gen/{model_name}/model.png")
 
         print(history.history.keys())
@@ -167,11 +171,63 @@ if __name__ == "__main__":
         
         print(f"\n\nTRAINING TIME: {(t1-t0)/3600}\n")
 
-
     else: 
         model = tf.keras.models.load_model("./gen/" + model_name)
 
-    test_gen = egohands(1, IMG_SIZE, test_x_paths, test_y_paths, test_wm_paths)
+    if Sparsify:
+        
+        pruning_params = {
+            'pruning_schedule' : tfmot.sparsity.keras.PolynomialDecay(initial_sparsity=0.5,
+                                                                      final_sparsity=0.8,
+                                                                      begin_step=0,
+                                                                      end_step=639*5)
+        }
+
+        model_for_pruning = tfmot.sparsity.keras.prune_low_magnitude(model, **pruning_params)
+        model_for_pruning.summary()
+        logdir = tempfile.mkdtemp()
+        callbacks = [
+                keras.callbacks.ModelCheckpoint(
+                    #"./gen/" + model_name + "model_check_point.h5",
+                    filepath = "./gen/" + model_name + '/checkpoints/{epoch:02d}.hdf5',
+                    verbose=1, 
+                    save_weights_only=False,
+                    save_best_only = False, # TODO Try True
+                    save_freq = int( len(train_x_paths) / BATCH_SIZE * CHECKPOINT_EPOCH_FREC )
+                    #save_best_only=True)
+                    #keras.callbacks.EarlyStopping(monitor = "val_accuracy", patience = 10, mode = 'max', verbose=1
+                ),
+                tfmot.sparsity.keras.UpdatePruningStep(),
+                tfmot.sparsity.keras.PruningSummaries(log_dir=logdir),
+        ]
+        
+        lr_schedule = tf.keras.optimizers.schedules.CosineDecay(
+                    initial_learning_rate = 0.002,
+                    decay_steps = EPOCHS * 639,
+                    alpha = 0.2
+                    )
+        optimizer = tf.keras.optimizers.Adam(learning_rate=lr_schedule)
+        model_for_pruning.compile(optimizer, 
+                  loss = 'binary_crossentropy',
+                  metrics = [
+                             tf.keras.metrics.BinaryIoU(target_class_ids=[1], threshold=0.5)
+                            ]
+        )
+
+        config = tf.compat.v1.ConfigProto()
+        config.gpu_options.allow_growth = True
+        sess = tf.compat.v1.Session(config=config)
+        history = model_for_pruning.fit(train_gen, 
+                  epochs=EPOCHS, 
+                  validation_data=val_gen, 
+                  batch_size = BATCH_SIZE,
+                  callbacks=callbacks
+        )
+        
+        model_for_export = tfmot.sparsity.keras.strip_pruning(model_for_pruning) 
+        model_for_export.save(rf"./gen/{model_name}_pruned", include_optimizer=False)
+
+    test_gen = egohands(1, img_size, test_x_paths, test_y_paths, test_wm_paths)
     test_preds = model.predict(test_gen)
 
     #plt.figure()

@@ -3,7 +3,6 @@ import os
 from tensorflow.python.keras.backend import zeros_like
 from tensorflow.python.keras.backend_config import epsilon
 from tensorflow.python.ops.variable_scope import default_variable_creator 
-from read_images import img_size, get_dataset_paths 
 import matplotlib.pyplot as plt
 import numpy as np
 import time
@@ -44,10 +43,10 @@ def display_results(input_img_path: str, target_img_path: str, inferred: np.arra
     fig, axes = plt.subplots(2,2)
 
     plt.subplot(221)
-    plt.imshow(cv2.resize(cv2.imread(input_img_path, cv2.IMREAD_COLOR), img_size)[:,:,::-1])
+    plt.imshow(cv2.imread(input_img_path, cv2.IMREAD_COLOR)[:,:,::-1])
 
     plt.subplot(222)
-    train_y = np.expand_dims(np.array(cv2.resize(cv2.imread(target_img_path, cv2.IMREAD_GRAYSCALE), img_size) > 128,dtype=np.uint8),2)#// 255, dtype=np.uint8) # > 128,
+    train_y = np.expand_dims(np.array(cv2.imread(target_img_path, cv2.IMREAD_GRAYSCALE) > 128,dtype=np.uint8),2)#// 255, dtype=np.uint8) # > 128,
                                                                                                                                                                                                                  
     plt.imshow(train_y, cmap = 'gray')
     
@@ -319,7 +318,7 @@ def weighted_dice_loss_np(y_true, y_pred, weight_map):
 
 def weighted_pixelwise_focal_loss_tf(y_true, y_pred, weight_map, gamma = 1.1, alpha = 0.5):
     """
-    Se ignora el valor del foreground del weightmap. Se ajsutan los desequilibrios ente clases con alpha
+    Se ignora el valor del foreground del weightmap. Se ajustan los desequilibrios ente clases con alpha
     """
 
     pt_1 = tf.where(tf.equal(y_true, 1), y_pred, tf.ones_like(y_pred)) #y_pred en el foreground, 1 else
