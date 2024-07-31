@@ -1,0 +1,11 @@
+tqdm
+requests
+tensorflow==2.10
+matplotlib
+opencv-python
+scikit-learn
+ipython
+visualkeras
+pydot==1.4.2
+pydot_ng==2.0.0
+tensorflow-model-optimization
