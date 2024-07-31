@@ -48,7 +48,6 @@ if __name__ == "__main__":
     random.Random(SEED2).shuffle(test_y_paths)
     random.Random(SEED2).shuffle(test_wm_paths)
     ###
-    
 
     with tf.device("cpu:0"):   
         model = tf.keras.models.load_model("./gen/" + model_name)
@@ -64,4 +63,3 @@ if __name__ == "__main__":
 
     for i in range(5):
         display_intermediate_results(test_x_paths[i], intermediate_output[i], layer_name)
-

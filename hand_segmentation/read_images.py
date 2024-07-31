@@ -6,7 +6,7 @@ import random
 sys.path.append(r'./dataset/')
 from dataset import get_full_dataset_paths
 from directories import INPUT_IMG_DIR, GROUND_TRUTH_DIR, WEIGHT_MAPS_DIR, AUG_INPUT_IMG_DIR, AUG_GROUND_TRUTH_DIR, AUG_WEIGHT_MAPS_DIR
-from directories import INPUT_IMG_DIR_640_360, GROUND_TRUTH_DIR_640_360, WEIGHT_MAPS_DIR_640_360, AUG_INPUT_IMG_DIR_640_360, AUG_GROUND_TRUTH_DIR_640_360, AUG_WEIGHT_MAPS_DIR_640_360
+from directories import INPUT_IMG_DIR_640_360, GROUND_TRUTH_DIR_640_360, WEIGHT_MAPS_DIR_640_360, AUG_INPUT_IMG_DIR_640_360, AUG_GROUND_TRUTH_DIR_640_360, AUG_WEIGHT_MAPS_DIR_640_360, BALANCED_AUG_WEIGHT_MAPS_DIR_640_360, BALANCED_WEIGHT_MAPS_DIR_640_360
 
 if __name__ == "__main__":
     rows = 2
@@ -15,8 +15,8 @@ if __name__ == "__main__":
 
     s = 100*idx #start, as there are 100 img per video, idx refers to each video
     
-    dataset_paths = get_full_dataset_paths(INPUT_IMG_DIR_640_360, GROUND_TRUTH_DIR_640_360, WEIGHT_MAPS_DIR_640_360,
-                                           AUG_INPUT_IMG_DIR_640_360, AUG_GROUND_TRUTH_DIR_640_360, AUG_WEIGHT_MAPS_DIR_640_360)
+    dataset_paths = get_full_dataset_paths(INPUT_IMG_DIR_640_360, GROUND_TRUTH_DIR_640_360, BALANCED_WEIGHT_MAPS_DIR_640_360,
+                                           AUG_INPUT_IMG_DIR_640_360, AUG_GROUND_TRUTH_DIR_640_360, BALANCED_AUG_WEIGHT_MAPS_DIR_640_360)
 
     input_img_paths = [p for dataset in ['train_dataset', 'augmented_dataset', 'test_dataset', 'validation_dataset'] for video_path in  dataset_paths[dataset]['input'] for p in video_path]
     target_img_paths = [p for dataset in ['train_dataset', 'augmented_dataset', 'test_dataset', 'validation_dataset'] for video_path in dataset_paths[dataset]['ground_truth'] for p in video_path]
@@ -50,4 +50,3 @@ if __name__ == "__main__":
             plt.axis('off')
         fig.tight_layout() 
         plt.show() 
-

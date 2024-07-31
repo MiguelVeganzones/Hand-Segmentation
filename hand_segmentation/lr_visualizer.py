@@ -95,3 +95,4 @@ if __name__ == "__main__":
     plot_scheduler(30 * 2411 , [lr, lr3, lr0, lr1, lr2, lr5])
 
 
+>>>>>>> refs/remotes/upstream/main

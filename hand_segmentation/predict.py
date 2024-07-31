@@ -107,4 +107,3 @@ if __name__ == '__main__':
         print(f"\n\nInference TIME: {(t1-t0)} s\n")
         print(f"{seconds_per_image*1000} ms/img\n")
         print(f"{1/seconds_per_image} FPS") 
-    

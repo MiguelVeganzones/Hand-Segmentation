@@ -246,7 +246,7 @@ if __name__ == "__main__":
 
     for target_img_path, inferred in zip(test_y_paths, test_preds):
         test_y = np.expand_dims(np.array(cv2.resize(cv2.imread(target_img_path, cv2.IMREAD_GRAYSCALE), img_size) > 128, dtype=np.uint8),2) 
-                                                                                        
+
         #pred = np.array(np.argmax(inferred, axis=-1),dtype = np.uint8)
 
         pred = inferred > 0.5

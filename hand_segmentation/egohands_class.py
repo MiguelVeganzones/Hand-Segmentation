@@ -148,5 +148,3 @@ class egohands(Sequence):
 
     #    fig.tight_layout()
     #    plt.show()
-        
-        
